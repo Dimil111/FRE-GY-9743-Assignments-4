@@ -107,22 +107,28 @@ class Interpolator1DPCP(Interpolator1D):
                          extrapolation_method)
         assert self.extrap_method_ == ExtrapMethod.FLAT
 
+    def _index(self, x: float) -> int:
+        # Left-continuous: x in (axis[i-1], axis[i]] maps to node i; flat beyond the last node.
+        return min(int(np.searchsorted(self.axis1_, x, side='left')), self.length_ - 1)
+
     def interpolate(self, x: float) -> float:
-        #TODO
-        pass
+        return float(self.values_[self._index(x)])
 
     def integrate(self, start_x: float, end_x: float) -> float:
-        #TODO
-        pass
+        return float(self.gradient_of_integrated_value_wrt_ordinate(start_x, end_x) @ self.values_)
 
     def gradient_wrt_ordinate(self, x: float) -> np.ndarray:
-        #TODO
-        pass
+        grad = np.zeros(self.length_)
+        grad[self._index(x)] = 1.0
+        return grad
 
     def gradient_of_integrated_value_wrt_ordinate(self, start_x: float, end_x: float) -> np.ndarray:
-        #TODO
-        pass
-
+        if start_x > end_x:
+            return -self.gradient_of_integrated_value_wrt_ordinate(end_x, start_x)
+        # Node i holds the value on (lower_i, upper_i]; the first and last pieces are unbounded.
+        lower = np.concatenate(([-np.inf], self.axis1_[:-1]))
+        upper = np.concatenate((self.axis1_[:-1], [np.inf]))
+        return np.maximum(np.minimum(end_x, upper) - np.maximum(start_x, lower), 0.0)
 
 
 class InterpolatorFactory:
